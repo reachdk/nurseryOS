@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PlantType {
+  id               String              @id @default(cuid())
+  name             String              @unique
+  typicalReadyDays Int
+  notes            String?
+  createdAt        DateTime            @default(now())
+  plantingBatches PlantingBatch[]
+  inventoryLots    InventoryLot[]
+  sales            Sale[]
+  vyapaarMaps      VyapaarProductMap[]
+}
+
+model VyapaarProductMap {
+  id              String    @id @default(cuid())
+  vyapaarItemName String    @unique
+  plantTypeId     String
+  plantType       PlantType @relation(fields: [plantTypeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+}
+
+model PlantingBatch {
+  id                String         @id @default(cuid())
+  plantTypeId       String
+  plantType         PlantType      @relation(fields: [plantTypeId], references: [id])
+  plantedQuantity   Int
+  remainingQuantity Int
+  plantedDate       DateTime
+  expectedReadyDate DateTime
+  stage             String         @default("growing")
+  wastage           Int            @default(0)
+  notes             String?
+  createdAt         DateTime       @default(now())
+  inventoryLots     InventoryLot[]
+}
+
+model InventoryLot {
+  id                String         @id @default(cuid())
+  plantTypeId       String
+  plantType         PlantType      @relation(fields: [plantTypeId], references: [id])
+  plantingBatchId   String?
+  plantingBatch     PlantingBatch? @relation(fields: [plantingBatchId], references: [id])
+  quantity          Int
+  remainingQuantity Int
+  movedDate         DateTime       @default(now())
+  notes             String?
+  createdAt         DateTime       @default(now())
+}
+
+model Sale {
+  id          String    @id @default(cuid())
+  plantTypeId String
+  plantType   PlantType @relation(fields: [plantTypeId], references: [id])
+  partyName   String
+  quantity    Int
+  saleType    String    @default("vyapaar_import")
+  soldAt      DateTime  @default(now())
+  externalRef String?   @unique
+  notes       String?
+}
