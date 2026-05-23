@@ -1,17 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   fetchAllPlantAvailability,
   getAllPlantAvailability,
   INVENTORY_CACHE_VERSION,
   resolveDeployCacheKey,
 } from "@/lib/availability";
-import { requireUser } from "@/lib/auth";
+import { getUser } from "@/lib/auth";
 import { calendarDayInNursery } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 
-/** Production-safe diagnostic (auth required). Compare DB vs cached vs fresh compute. */
-export async function GET() {
-  await requireUser();
+export const runtime = "nodejs";
+
+function authorized(request: NextRequest): boolean {
+  const expected = process.env.INVENTORY_DEBUG_SECRET;
+  if (!expected) return false;
+  return request.nextUrl.searchParams.get("secret") === expected;
+}
+
+/** Compare DB vs fresh compute vs cached Home totals. Auth OR ?secret=INVENTORY_DEBUG_SECRET */
+export async function GET(request: NextRequest) {
+  const viaSecret = authorized(request);
+  if (!viaSecret) {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
   const brinjalPlant = await prisma.plantType.findFirst({
     where: { name: { contains: "rinjal", mode: "insensitive" } },
@@ -35,6 +49,7 @@ export async function GET() {
     cacheVersion: INVENTORY_CACHE_VERSION,
     deployCacheKey: resolveDeployCacheKey(),
     vercelEnv: {
+      VERCEL: process.env.VERCEL ?? null,
       VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID ?? null,
       VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       NODE_ENV: process.env.NODE_ENV ?? null,
@@ -73,6 +88,6 @@ export async function GET() {
         }
       : null,
     note:
-      "Empty inventory_lot is normal when stock is still in nursery; free to sell should include ready planting_batch.",
+      "Empty inventory_lot is normal when stock is still in nursery. If freshCompute.availableNow is 0 but db has ready batches, logic or DB env is wrong. If fresh is correct but cachedHome is 0, cache mismatch.",
   });
 }

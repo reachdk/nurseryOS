@@ -35,7 +35,13 @@ function NurseryBatchList({
 
 export function PlantAvailabilityCard({ avail }: { avail: PlantAvailability }) {
   return (
-    <Card>
+    <Card
+      data-plant={avail.plantName}
+      data-available-now={avail.availableNow}
+      data-ready-in-nursery={avail.readyInNursery}
+      data-in-nursery={avail.inNursery}
+      data-in-office={avail.inOffice}
+    >
       <Link
         href={`/plants/${avail.plantTypeId}`}
         className="mb-2 block text-lg font-semibold text-[var(--primary)] hover:underline"

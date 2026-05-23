@@ -28,6 +28,15 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  if (pathname === "/api/debug/inventory") {
+    const secret = request.nextUrl.searchParams.get("secret");
+    const expected = process.env.INVENTORY_DEBUG_SECRET;
+    if (expected && secret === expected) {
+      return supabaseResponse;
+    }
+  }
+
   const isPublic =
     pathname.startsWith("/login") || pathname.startsWith("/auth");
 

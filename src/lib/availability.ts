@@ -77,6 +77,17 @@ export async function fetchAllPlantAvailability(): Promise<PlantAvailability[]> 
   const result = plants.map((p) => computeAvailability(p as PlantWithStock));
   const brinjalAvail = result.find((p) => /brinjal/i.test(p.plantName));
   if (brinjalAvail) {
+    if (process.env.VERCEL) {
+      console.info(
+        "[inventory] brinjal fresh",
+        JSON.stringify({
+          availableNow: brinjalAvail.availableNow,
+          readyInNursery: brinjalAvail.readyInNursery,
+          inNursery: brinjalAvail.inNursery,
+          deployCacheKey,
+        })
+      );
+    }
     // #region agent log
     debugLog({
       location: "availability.ts:fetch-computed",
@@ -128,27 +139,43 @@ function looksLikeStaleSellableCache(plant: PlantAvailability): boolean {
   );
 }
 
+function sellableMismatch(
+  cached: PlantAvailability[],
+  fresh: PlantAvailability[]
+): boolean {
+  return fresh.some((f) => {
+    const c = cached.find((x) => x.plantTypeId === f.plantTypeId);
+    if (!c) return true;
+    return (
+      looksLikeStaleSellableCache(c) ||
+      c.availableNow !== f.availableNow ||
+      c.readyInNursery !== f.readyInNursery
+    );
+  });
+}
+
 export async function getAllPlantAvailability(): Promise<PlantAvailability[]> {
   ensureInventoryCacheForDeploy();
 
   let result = await getCachedAllPlantAvailability();
-  const stale = result.filter(looksLikeStaleSellableCache);
 
-  if (stale.length > 0) {
-    unstable_expireTag(INVENTORY_CACHE_TAG);
+  if (result.some(looksLikeStaleSellableCache)) {
     const fresh = await fetchAllPlantAvailability();
-    // #region agent log
-    debugLog({
-      location: "availability.ts:stale-heal",
-      message: "Stale sellable cache detected; served fresh fetch",
-      hypothesisId: "H3",
-      data: {
-        stalePlants: stale.map((p) => p.plantName),
-        brinjalFresh: fresh.find((p) => /brinjal/i.test(p.plantName)),
-      },
-    });
-    // #endregion
-    result = fresh;
+    if (sellableMismatch(result, fresh)) {
+      unstable_expireTag(INVENTORY_CACHE_TAG);
+      result = fresh;
+      // #region agent log
+      debugLog({
+        location: "availability.ts:cache-mismatch",
+        message: "Cached sellable totals differ from fresh; using fresh",
+        hypothesisId: "H3",
+        data: {
+          brinjalCached: result.find((p) => /brinjal/i.test(p.plantName)),
+          brinjalFresh: fresh.find((p) => /brinjal/i.test(p.plantName)),
+        },
+      });
+      // #endregion
+    }
   }
 
   const brinjal = result.find((p) => /brinjal/i.test(p.plantName));
