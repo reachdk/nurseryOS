@@ -1,5 +1,25 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { formatWeek } from "@/lib/dates";
+
+export const INVENTORY_CACHE_TAG = "inventory";
+
+const plantInclude = {
+  inventoryLots: true,
+  plantingBatches: { orderBy: { expectedReadyDate: "asc" as const } },
+};
+
+type PlantWithStock = {
+  id: string;
+  name: string;
+  typicalReadyDays: number;
+  inventoryLots: { plantingBatchId: string | null; remainingQuantity: number }[];
+  plantingBatches: {
+    id: string;
+    expectedReadyDate: Date;
+    remainingQuantity: number;
+  }[];
+};
 
 export type UpcomingBatch = {
   batchId: string;
@@ -19,6 +39,7 @@ export type BatchLocationRow = {
 export type PlantAvailability = {
   plantTypeId: string;
   plantName: string;
+  typicalReadyDays: number;
   inNursery: number;
   inOffice: number;
   availableNow: number;
@@ -26,19 +47,15 @@ export type PlantAvailability = {
   upcomingBatches: UpcomingBatch[];
 };
 
-export async function getPlantAvailability(
-  plantTypeId: string
-): Promise<PlantAvailability | null> {
-  const plant = await prisma.plantType.findUnique({
-    where: { id: plantTypeId },
-    include: {
-      inventoryLots: true,
-      plantingBatches: { orderBy: { expectedReadyDate: "asc" } },
-    },
-  });
+export type PlantDetail = PlantAvailability & {
+  nurseryBatches: {
+    id: string;
+    expectedReadyDate: Date;
+    remainingQuantity: number;
+  }[];
+};
 
-  if (!plant) return null;
-
+function computeAvailability(plant: PlantWithStock): PlantAvailability {
   const inOffice = plant.inventoryLots.reduce(
     (sum, lot) => sum + lot.remainingQuantity,
     0
@@ -48,8 +65,6 @@ export async function getPlantAvailability(
     (sum, batch) => sum + batch.remainingQuantity,
     0
   );
-
-  const availableNow = inOffice;
 
   const batchRows: BatchLocationRow[] = plant.plantingBatches
     .map((batch) => {
@@ -79,18 +94,59 @@ export async function getPlantAvailability(
   return {
     plantTypeId: plant.id,
     plantName: plant.name,
+    typicalReadyDays: plant.typicalReadyDays,
     inNursery,
     inOffice,
-    availableNow,
+    availableNow: inOffice,
     batchRows,
     upcomingBatches,
   };
 }
 
-export async function getAllPlantAvailability(): Promise<PlantAvailability[]> {
-  const plants = await prisma.plantType.findMany({ orderBy: { name: "asc" } });
-  const results = await Promise.all(
-    plants.map((p) => getPlantAvailability(p.id))
-  );
-  return results.filter((r): r is PlantAvailability => r !== null);
+async function fetchAllPlantAvailability(): Promise<PlantAvailability[]> {
+  const plants = await prisma.plantType.findMany({
+    orderBy: { name: "asc" },
+    include: plantInclude,
+  });
+  return plants.map(computeAvailability);
+}
+
+export const getAllPlantAvailability = unstable_cache(
+  fetchAllPlantAvailability,
+  ["all-plant-availability"],
+  { revalidate: 60, tags: [INVENTORY_CACHE_TAG] }
+);
+
+export async function getPlantAvailability(
+  plantTypeId: string
+): Promise<PlantAvailability | null> {
+  const plant = await prisma.plantType.findUnique({
+    where: { id: plantTypeId },
+    include: plantInclude,
+  });
+
+  if (!plant) return null;
+  return computeAvailability(plant);
+}
+
+export async function getPlantDetail(
+  plantTypeId: string
+): Promise<PlantDetail | null> {
+  const plant = await prisma.plantType.findUnique({
+    where: { id: plantTypeId },
+    include: plantInclude,
+  });
+
+  if (!plant) return null;
+
+  const avail = computeAvailability(plant);
+  const nurseryBatches = plant.plantingBatches
+    .filter((b) => b.remainingQuantity > 0)
+    .map((b) => ({
+      id: b.id,
+      expectedReadyDate: b.expectedReadyDate,
+      remainingQuantity: b.remainingQuantity,
+    }));
+
+  return { ...avail, nurseryBatches };
 }

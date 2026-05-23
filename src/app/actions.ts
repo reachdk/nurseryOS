@@ -1,11 +1,16 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { INVENTORY_CACHE_TAG } from "@/lib/availability";
+
+function revalidateInventory() {
+  revalidateTag(INVENTORY_CACHE_TAG);
+}
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { deductOfficeStock, getOfficeStock } from "@/lib/inventory";
+import { deductOfficeStock, getOfficeStockByPlant } from "@/lib/inventory";
 import {
   parseCsvText,
   parseSheetRows,
@@ -47,6 +52,7 @@ export async function createPlantType(formData: FormData) {
     );
   }
 
+  revalidateInventory();
   revalidatePath("/plants");
   redirect("/plants");
 }
@@ -97,6 +103,7 @@ export async function createPlantingBatch(formData: FormData) {
     metadata: { plantTypeId, plantedQuantity },
   });
 
+  revalidateInventory();
   revalidatePath("/");
   revalidatePath(`/plants/${plantTypeId}`);
   redirect(`/plants/${plantTypeId}`);
@@ -153,6 +160,7 @@ export async function moveBatchToStock(batchId: string, formData: FormData) {
     metadata: { moveQuantity, plantTypeId: batch.plantTypeId },
   });
 
+  revalidateInventory();
   revalidatePath(`/plants/${batch.plantTypeId}`);
   revalidatePath("/");
   redirect(`/plants/${batch.plantTypeId}`);
@@ -197,6 +205,7 @@ export async function recordBatchLoss(formData: FormData) {
     metadata: { quantity, reason, plantTypeId },
   });
 
+  revalidateInventory();
   revalidatePath(`/plants/${plantTypeId}`);
   revalidatePath("/");
   redirect(`/plants/${plantTypeId}`);
@@ -302,6 +311,8 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
   );
   const refSet = new Set(existingRefs.map((r) => r.externalRef));
 
+  const officeByPlant = await getOfficeStockByPlant();
+
   const preview: PreviewImportRow[] = [];
 
   for (const row of parsed) {
@@ -323,7 +334,7 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
       continue;
     }
 
-    const office = await getOfficeStock(map.plantTypeId);
+    const office = officeByPlant.get(map.plantTypeId) ?? 0;
     if (row.quantity > office) {
       preview.push({
         ...row,
@@ -393,6 +404,7 @@ export async function confirmVyapaarImport(formData: FormData) {
     metadata: { imported, skipped, total: okRows.length },
   });
 
+  revalidateInventory();
   revalidatePath("/");
   revalidatePath("/sync");
   revalidatePath("/plants");

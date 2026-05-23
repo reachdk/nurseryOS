@@ -32,3 +32,14 @@ export async function getOfficeStock(plantTypeId: string): Promise<number> {
   });
   return lots.reduce((sum, lot) => sum + lot.remainingQuantity, 0);
 }
+
+/** One query for Vyapaar import preview — avoids per-row DB round-trips. */
+export async function getOfficeStockByPlant(): Promise<Map<string, number>> {
+  const grouped = await prisma.inventoryLot.groupBy({
+    by: ["plantTypeId"],
+    _sum: { remainingQuantity: true },
+  });
+  return new Map(
+    grouped.map((g) => [g.plantTypeId, g._sum.remainingQuantity ?? 0])
+  );
+}

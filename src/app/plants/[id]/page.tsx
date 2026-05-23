@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getPlantAvailability } from "@/lib/availability";
+import { getPlantDetail } from "@/lib/availability";
 import { formatDate } from "@/lib/dates";
 import { moveBatchToStock, recordBatchLoss } from "@/app/actions";
 import { Card, Stat, Button, Field, Input, Select, Textarea } from "@/components/ui";
@@ -23,25 +22,16 @@ export default async function PlantDetailPage({
   const { id } = await params;
   const { lossError, moveError } = await searchParams;
 
-  const [plant, avail] = await Promise.all([
-    prisma.plantType.findUnique({
-      where: { id },
-      include: {
-        plantingBatches: { orderBy: { expectedReadyDate: "asc" } },
-      },
-    }),
-    getPlantAvailability(id),
-  ]);
+  const detail = await getPlantDetail(id);
+  if (!detail) notFound();
 
-  if (!plant || !avail) notFound();
-
-  const batchesWithNursery = plant.plantingBatches.filter((b) => b.remainingQuantity > 0);
+  const { nurseryBatches, ...avail } = detail;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">{plant.name}</h2>
+      <h2 className="text-xl font-semibold">{avail.plantName}</h2>
       <p className="text-xs text-[var(--muted)]">
-        Usually ~{plant.typicalReadyDays} days to ready · sales in Vyapaar, sync EOD
+        Usually ~{avail.typicalReadyDays} days to ready · sales in Vyapaar, sync EOD
       </p>
 
       <Card>
@@ -90,7 +80,7 @@ export default async function PlantDetailPage({
             </p>
           )}
 
-          {batchesWithNursery.map((batch) => (
+          {nurseryBatches.map((batch) => (
             <Card key={batch.id}>
               <p className="mb-2 text-sm font-medium">
                 Move to office · ready {formatDate(batch.expectedReadyDate)}
@@ -127,7 +117,7 @@ export default async function PlantDetailPage({
         </section>
       )}
 
-      {batchesWithNursery.length > 0 && (
+      {nurseryBatches.length > 0 && (
         <Card>
           <h3 className="mb-3 text-sm font-semibold">Record loss (nursery)</h3>
           {lossError && (
@@ -139,7 +129,7 @@ export default async function PlantDetailPage({
             <input type="hidden" name="plantTypeId" value={id} />
             <Field label="Batch">
               <Select name="batchId" required>
-                {batchesWithNursery.map((b) => (
+                {nurseryBatches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {formatDate(b.expectedReadyDate)} — {b.remainingQuantity.toLocaleString()}{" "}
                     in nursery

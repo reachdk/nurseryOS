@@ -33,6 +33,7 @@ export function Nav() {
             <li key={link.href} className="flex-1">
               <Link
                 href={link.href}
+                prefetch
                 className={`block rounded-lg px-2 py-2 text-center text-xs font-medium transition-colors ${
                   active
                     ? "bg-[var(--primary)] text-white"
