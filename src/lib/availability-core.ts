@@ -1,4 +1,5 @@
 import { calendarDayInNursery, formatWeek } from "@/lib/dates";
+import { debugLog } from "@/lib/debug-log";
 
 export type PlantWithStock = {
   id: string;
@@ -71,6 +72,25 @@ export function computeAvailability(
   for (const batch of plant.plantingBatches) {
     if (batch.remainingQuantity <= 0) continue;
 
+    if (/brinjal/i.test(plant.name)) {
+      const ready = isReadyForSale(batch.expectedReadyDate, asOf);
+      // #region agent log
+      debugLog({
+        location: "availability-core.ts:batch-loop",
+        message: "Brinjal batch ready check",
+        hypothesisId: "H1",
+        data: {
+          batchId: batch.id.slice(0, 8),
+          remaining: batch.remainingQuantity,
+          readyIso: batch.expectedReadyDate.toISOString(),
+          readyDayIndia: calendarDayInNursery(batch.expectedReadyDate),
+          asOfDayIndia: calendarDayInNursery(asOf),
+          isReadyForSale: ready,
+        },
+      });
+      // #endregion
+    }
+
     const summary: NurseryBatchSummary = {
       batchId: batch.id,
       readyDate: batch.expectedReadyDate,
@@ -102,7 +122,7 @@ export function computeAvailability(
     })
     .filter((row) => row.inNursery > 0 || row.inOffice > 0);
 
-  return {
+  const result = {
     plantTypeId: plant.id,
     plantName: plant.name,
     typicalReadyDays: plant.typicalReadyDays,
@@ -114,4 +134,23 @@ export function computeAvailability(
     readyNowBatches,
     upcomingBatches,
   };
+
+  if (/brinjal/i.test(plant.name)) {
+    // #region agent log
+    debugLog({
+      location: "availability-core.ts:compute-result",
+      message: "Brinjal computeAvailability result",
+      hypothesisId: "H4",
+      data: {
+        inOffice,
+        readyInNursery,
+        availableNow: result.availableNow,
+        batchCount: plant.plantingBatches.length,
+        lotCount: plant.inventoryLots.length,
+      },
+    });
+    // #endregion
+  }
+
+  return result;
 }
