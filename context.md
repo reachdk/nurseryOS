@@ -3,6 +3,8 @@
 Project: `/Users/deepak.kumar/code/nurseryOS`  
 Stack: Next.js 15, React 19, Prisma, **Supabase Postgres**, **Supabase Auth**, Vercel deploy, mobile-first UI (responsive desktop).
 
+**Production:** https://nursery-os.vercel.app (Vercel project `reachdk1/nursery-os`, GitHub `reachdk/nurseryOS`).
+
 ## What this app is
 
 Nursery **inventory only**. Not POS. Not orders.
