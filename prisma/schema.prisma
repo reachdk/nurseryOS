@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model PlantType {
@@ -13,7 +14,7 @@ model PlantType {
   typicalReadyDays Int
   notes            String?
   createdAt        DateTime            @default(now())
-  plantingBatches PlantingBatch[]
+  plantingBatches  PlantingBatch[]
   inventoryLots    InventoryLot[]
   sales            Sale[]
   vyapaarMaps      VyapaarProductMap[]
@@ -65,4 +66,18 @@ model Sale {
   soldAt      DateTime  @default(now())
   externalRef String?   @unique
   notes       String?
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  userEmail  String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }

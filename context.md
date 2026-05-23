@@ -1,7 +1,7 @@
 # NurseryOS — context
 
 Project: `/Users/deepak.kumar/code/nurseryOS`  
-Stack: Next.js 15, React 19, Prisma, SQLite (`prisma/dev.db`), mobile-first UI.
+Stack: Next.js 15, React 19, Prisma, **Supabase Postgres**, **Supabase Auth**, Vercel deploy, mobile-first UI (responsive desktop).
 
 ## What this app is
 
@@ -45,6 +45,7 @@ Partial move OK: move 20k of 50k batch → 20k office, 30k stays nursery (`moveB
 - `InventoryLot`: office stock, optional link to batch
 - `VyapaarProductMap`: vyapaar item name → plantTypeId
 - `Sale`: audit of imports — `partyName`, `quantity`, `saleType`=`vyapaar_import`, `externalRef` unique (idempotency)
+- `AuditLog`: who changed what — `userId`, `action`, `entityType`, `entityId`, `metadata`
 
 ## Screens / nav
 
@@ -55,7 +56,7 @@ Partial move OK: move 20k of 50k batch → 20k office, 30k stays nursery (`moveB
 | Plant | `/batches/new` | New batch |
 | Sync | `/sync` | Upload Vyapaar file, preview, import |
 
-Also: `/plants/new` (add plant), `/plants/[id]` (location table, move, loss), `/settings/vyapaar` (name mappings).
+Also: `/plants/new` (add plant), `/plants/[id]` (location table, move, loss), `/settings/vyapaar` (name mappings), `/login` (staff sign-in).
 
 ## Add plant
 
@@ -83,7 +84,9 @@ Excel: `read-excel-file` in `actions.ts`; `serverExternalPackages` in `next.conf
 
 ## Key files
 
-- `src/app/actions.ts` — all server actions
+- `src/app/actions.ts` — all server actions (auth + audit)
+- `src/lib/auth.ts`, `src/lib/audit.ts` — `requireUser()`, `logAudit()`
+- `src/middleware.ts` — session refresh + route guard
 - `src/lib/availability.ts` — nursery/office/batch rows
 - `src/lib/inventory.ts` — `deductOfficeStock` FIFO
 - `src/components/SyncImportForm.tsx`, `PlantBatchForm.tsx`, `AddPlantForm.tsx`
@@ -92,8 +95,9 @@ Excel: `read-excel-file` in `actions.ts`; `serverExternalPackages` in `next.conf
 
 ```bash
 cd /Users/deepak.kumar/code/nurseryOS
+cp .env.example .env     # fill Supabase URLs (see docs/SUPABASE_SETUP.md)
 npm install
-npm run db:push          # schema change → may need rm prisma/dev.db first
+npm run db:migrate:deploy
 npm run db:seed          # optional demo
 npm run dev              # http://localhost:3000
 ```
@@ -106,6 +110,7 @@ npm run dev              # http://localhost:3000
 - Refactor kept batch/move/loss/location view
 - Ready date per batch, not computed range
 - Name sync: mapping table + same names in both apps when possible
+- Phase 1: Supabase Postgres + Auth + Vercel + audit log + desktop-responsive layout
 
 ## Later (not built)
 
@@ -113,8 +118,9 @@ npm run dev              # http://localhost:3000
 - Manual stock correction sale
 - Drop Excel dep → CSV-only sync (optional cleanup)
 - Edit ready date on existing batch
-- Login / multi-user
-- Postgres deploy
+- Offline / PWA
+- Roles (admin vs field staff)
+- Multi-tenant nurseries
 
 ## Plans on disk (Cursor)
 

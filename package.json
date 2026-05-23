@@ -4,15 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.8",
     "date-fns": "^4.1.0",
     "read-excel-file": "^5.8.8",
     "next": "^15.3.3",

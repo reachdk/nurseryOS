@@ -74,7 +74,8 @@ export function SyncImportForm() {
           <p className="text-sm font-medium">
             {okCount} line(s) ready to import · {preview.length} total
           </p>
-          <div className="max-h-64 space-y-2 overflow-y-auto">
+          <div className="max-h-64 overflow-x-auto overflow-y-auto">
+            <div className="min-w-[320px] space-y-2 lg:min-w-full">
             {preview.map((row) => (
               <div
                 key={row.externalRef}
@@ -93,6 +94,7 @@ export function SyncImportForm() {
                 )}
               </div>
             ))}
+            </div>
           </div>
           {okCount > 0 && (
             <form action={confirmVyapaarImport}>

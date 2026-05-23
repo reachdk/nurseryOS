@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { deductOfficeStock, getOfficeStock } from "@/lib/inventory";
 import {
   parseCsvText,
@@ -11,6 +13,7 @@ import {
 } from "@/lib/vyapaar-import";
 
 export async function createPlantType(formData: FormData) {
+  const user = await requireUser();
   const name = String(formData.get("name") ?? "").trim();
   const typicalReadyDays = Number(formData.get("typicalReadyDays"));
   const notes = String(formData.get("notes") ?? "").trim() || null;
@@ -27,8 +30,14 @@ export async function createPlantType(formData: FormData) {
   }
 
   try {
-    await prisma.plantType.create({
+    const plant = await prisma.plantType.create({
       data: { name, typicalReadyDays, notes },
+    });
+    await logAudit(user, {
+      action: "plant.create",
+      entityType: "PlantType",
+      entityId: plant.id,
+      metadata: { name },
     });
   } catch {
     redirect(
@@ -43,6 +52,7 @@ export async function createPlantType(formData: FormData) {
 }
 
 export async function createPlantingBatch(formData: FormData) {
+  const user = await requireUser();
   const plantTypeId = String(formData.get("plantTypeId"));
   const plantedQuantity = Number(formData.get("plantedQuantity"));
   const plantedDateStr = String(formData.get("plantedDate") ?? "");
@@ -68,7 +78,7 @@ export async function createPlantingBatch(formData: FormData) {
     );
   }
 
-  await prisma.plantingBatch.create({
+  const batch = await prisma.plantingBatch.create({
     data: {
       plantTypeId,
       plantedQuantity,
@@ -80,12 +90,20 @@ export async function createPlantingBatch(formData: FormData) {
     },
   });
 
+  await logAudit(user, {
+    action: "batch.create",
+    entityType: "PlantingBatch",
+    entityId: batch.id,
+    metadata: { plantTypeId, plantedQuantity },
+  });
+
   revalidatePath("/");
   revalidatePath(`/plants/${plantTypeId}`);
   redirect(`/plants/${plantTypeId}`);
 }
 
 export async function moveBatchToStock(batchId: string, formData: FormData) {
+  const user = await requireUser();
   const moveQuantity = Number(formData.get("moveQuantity"));
 
   const batch = await prisma.plantingBatch.findUniqueOrThrow({
@@ -128,12 +146,20 @@ export async function moveBatchToStock(batchId: string, formData: FormData) {
     }),
   ]);
 
+  await logAudit(user, {
+    action: "stock.move_to_office",
+    entityType: "PlantingBatch",
+    entityId: batchId,
+    metadata: { moveQuantity, plantTypeId: batch.plantTypeId },
+  });
+
   revalidatePath(`/plants/${batch.plantTypeId}`);
   revalidatePath("/");
   redirect(`/plants/${batch.plantTypeId}`);
 }
 
 export async function recordBatchLoss(formData: FormData) {
+  const user = await requireUser();
   const plantTypeId = String(formData.get("plantTypeId"));
   const batchId = String(formData.get("batchId"));
   const quantity = Number(formData.get("quantity"));
@@ -164,12 +190,20 @@ export async function recordBatchLoss(formData: FormData) {
     },
   });
 
+  await logAudit(user, {
+    action: "batch.loss",
+    entityType: "PlantingBatch",
+    entityId: batchId,
+    metadata: { quantity, reason, plantTypeId },
+  });
+
   revalidatePath(`/plants/${plantTypeId}`);
   revalidatePath("/");
   redirect(`/plants/${plantTypeId}`);
 }
 
 export async function createVyapaarMapping(formData: FormData) {
+  const user = await requireUser();
   const vyapaarItemName = String(formData.get("vyapaarItemName") ?? "").trim();
   const plantTypeId = String(formData.get("plantTypeId"));
 
@@ -180,8 +214,14 @@ export async function createVyapaarMapping(formData: FormData) {
   }
 
   try {
-    await prisma.vyapaarProductMap.create({
+    const mapping = await prisma.vyapaarProductMap.create({
       data: { vyapaarItemName, plantTypeId },
+    });
+    await logAudit(user, {
+      action: "vyapaar.map.create",
+      entityType: "VyapaarProductMap",
+      entityId: mapping.id,
+      metadata: { vyapaarItemName, plantTypeId },
     });
   } catch {
     redirect(
@@ -196,8 +236,14 @@ export async function createVyapaarMapping(formData: FormData) {
 }
 
 export async function deleteVyapaarMapping(formData: FormData) {
+  const user = await requireUser();
   const id = String(formData.get("id"));
   await prisma.vyapaarProductMap.delete({ where: { id } });
+  await logAudit(user, {
+    action: "vyapaar.map.delete",
+    entityType: "VyapaarProductMap",
+    entityId: id,
+  });
   revalidatePath("/settings/vyapaar");
   revalidatePath("/sync");
   redirect("/settings/vyapaar");
@@ -207,6 +253,8 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
   rows: PreviewImportRow[];
   error?: string;
 }> {
+  await requireUser();
+
   const file = formData.get("file");
   if (!file || !(file instanceof File)) {
     return { rows: [], error: "Please choose a file." };
@@ -299,6 +347,7 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
 }
 
 export async function confirmVyapaarImport(formData: FormData) {
+  const user = await requireUser();
   const payload = String(formData.get("payload") ?? "");
   let rows: PreviewImportRow[];
   try {
@@ -309,15 +358,22 @@ export async function confirmVyapaarImport(formData: FormData) {
 
   const okRows = rows.filter((r) => r.status === "ok" && r.plantTypeId);
   let imported = 0;
+  let skipped = 0;
 
   for (const row of okRows) {
     const existing = await prisma.sale.findUnique({
       where: { externalRef: row.externalRef },
     });
-    if (existing) continue;
+    if (existing) {
+      skipped++;
+      continue;
+    }
 
     const { shortfall } = await deductOfficeStock(row.plantTypeId!, row.quantity);
-    if (shortfall > 0) continue;
+    if (shortfall > 0) {
+      skipped++;
+      continue;
+    }
 
     await prisma.sale.create({
       data: {
@@ -331,6 +387,11 @@ export async function confirmVyapaarImport(formData: FormData) {
     });
     imported++;
   }
+
+  await logAudit(user, {
+    action: "vyapaar.import",
+    metadata: { imported, skipped, total: okRows.length },
+  });
 
   revalidatePath("/");
   revalidatePath("/sync");

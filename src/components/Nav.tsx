@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "@/app/login/actions";
 
 const links = [
   { href: "/", label: "Home" },
@@ -10,11 +11,18 @@ const links = [
   { href: "/sync", label: "Sync" },
 ];
 
+const NAV_SHELL =
+  "fixed bottom-0 left-1/2 z-10 w-full max-w-lg -translate-x-1/2 border-t border-[var(--accent)] bg-white px-2 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] lg:max-w-4xl xl:max-w-5xl";
+
 export function Nav() {
   const pathname = usePathname();
 
+  if (pathname === "/login") {
+    return null;
+  }
+
   return (
-    <nav className="fixed bottom-0 left-1/2 z-10 w-full max-w-lg -translate-x-1/2 border-t border-[var(--accent)] bg-white px-2 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+    <nav className={NAV_SHELL}>
       <ul className="flex justify-between gap-1">
         {links.map((link) => {
           const active =
@@ -36,6 +44,16 @@ export function Nav() {
             </li>
           );
         })}
+        <li className="shrink-0">
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="rounded-lg px-2 py-2 text-xs font-medium text-[var(--muted)] hover:bg-[var(--background)]"
+            >
+              Out
+            </button>
+          </form>
+        </li>
       </ul>
     </nav>
   );

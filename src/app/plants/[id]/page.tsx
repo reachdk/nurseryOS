@@ -62,7 +62,7 @@ export default async function PlantDetailPage({
             Batches by location
           </h3>
           <div className="overflow-x-auto rounded-xl border border-[var(--accent)]/40 bg-white">
-            <table className="w-full min-w-[280px] text-left text-xs">
+            <table className="w-full min-w-[320px] text-left text-xs lg:min-w-full">
               <thead className="bg-[var(--background)] text-[var(--muted)]">
                 <tr>
                   <th className="px-2 py-2 font-medium">Ready</th>

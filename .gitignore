@@ -29,6 +29,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
+.env
 .env*.local
 
 # vercel
@@ -41,3 +42,7 @@ next-env.d.ts
 # prisma
 prisma/*.db
 prisma/*.db-journal
+
+# agent skills (local only)
+.agents/
+skills-lock.json
