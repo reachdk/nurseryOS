@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getAllPlantAvailability } from "@/lib/availability";
 import { Card, Button } from "@/components/ui";
 
+export const dynamic = "force-dynamic";
+
 export default async function PlantsPage() {
   const availability = await getAllPlantAvailability();
 

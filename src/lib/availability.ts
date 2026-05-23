@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
   computeAvailability,
@@ -31,19 +30,14 @@ export type PlantDetail = PlantAvailability & {
   }[];
 };
 
-async function fetchAllPlantAvailability(): Promise<PlantAvailability[]> {
+/** Fresh DB read every request — avoids stale cross-deploy Data Cache on Home/Plants. */
+export async function getAllPlantAvailability(): Promise<PlantAvailability[]> {
   const plants = await prisma.plantType.findMany({
     orderBy: { name: "asc" },
     include: plantInclude,
   });
   return plants.map((p) => computeAvailability(p as PlantWithStock));
 }
-
-export const getAllPlantAvailability = unstable_cache(
-  fetchAllPlantAvailability,
-  ["all-plant-availability", "v2-sellable-nursery"],
-  { revalidate: 30, tags: [INVENTORY_CACHE_TAG] }
-);
 
 export async function getPlantAvailability(
   plantTypeId: string
