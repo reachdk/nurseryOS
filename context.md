@@ -91,7 +91,7 @@ Excel: `read-excel-file` in `actions.ts`; `serverExternalPackages` in `next.conf
 - `src/app/actions.ts` — all server actions (auth + audit)
 - `src/lib/auth.ts`, `src/lib/audit.ts` — `requireUser()`, `logAudit()`
 - `src/middleware.ts` — session refresh + route guard
-- `src/lib/availability.ts` — nursery/office/batch rows
+- `src/lib/availability.ts` — nursery/office/batch rows; `unstable_cache` on `getAllPlantAvailability` (tag `inventory`, 60s TTL, deploy SHA + `INVENTORY_CACHE_VERSION` in key). Plant detail reads same cache for totals. Invalidate via `unstable_expireTag` + `revalidateTag` + `revalidatePath` in every stock mutation.
 - `src/lib/inventory.ts` — `getSellableStockByPlant`, `deductSellableStock` (office FIFO, then ready nursery)
 - `src/lib/availability-core.ts` — `computeAvailability`, `isReadyForSale` (unit tested)
 - `src/components/SyncImportForm.tsx`, `PlantBatchForm.tsx`, `AddPlantForm.tsx`

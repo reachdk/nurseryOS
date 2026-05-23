@@ -1,12 +1,18 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import {
+  revalidatePath,
+  revalidateTag,
+  unstable_expireTag,
+} from "next/cache";
 import { INVENTORY_CACHE_TAG } from "@/lib/availability";
 
+/** Purge inventory Data Cache immediately, then refresh stock pages. */
 function revalidateInventory() {
+  unstable_expireTag(INVENTORY_CACHE_TAG);
   revalidateTag(INVENTORY_CACHE_TAG);
-  revalidatePath("/");
-  revalidatePath("/plants");
+  revalidatePath("/", "layout");
+  revalidatePath("/plants", "layout");
 }
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";

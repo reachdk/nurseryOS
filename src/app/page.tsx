@@ -3,8 +3,6 @@ import { getAllPlantAvailability } from "@/lib/availability";
 import { PlantAvailabilityCard } from "@/components/PlantAvailabilityCard";
 import { Card, Button } from "@/components/ui";
 
-export const dynamic = "force-dynamic";
-
 export default async function HomePage() {
   const availability = await getAllPlantAvailability();
 
