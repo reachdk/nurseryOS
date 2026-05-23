@@ -38,17 +38,19 @@ Add for **Production** and **Preview** (copy from local `.env`):
 
 Redeploy after adding or changing env vars.
 
-## 4. Supabase Auth URLs
+## 4. Supabase Auth URLs (required for production login)
 
 Supabase → **Authentication** → **URL Configuration**
 
+**Production NurseryOS URL:** `https://nursery-os.vercel.app`
+
 | Field | Value |
 |-------|--------|
-| **Site URL** | `https://YOUR-PROJECT.vercel.app` |
-| **Redirect URLs** | `https://YOUR-PROJECT.vercel.app/**` |
+| **Site URL** | `https://nursery-os.vercel.app` |
+| **Redirect URLs** | `https://nursery-os.vercel.app/**` |
 | | `http://localhost:3000/**` |
 
-Replace `YOUR-PROJECT` with your Vercel production hostname.
+Click **Save** after editing.
 
 ## 5. Smoke test (production)
 

@@ -33,6 +33,9 @@ Open http://localhost:3000 — you will be redirected to **Sign in**.
 
 3. Deploy. The build runs `prisma migrate deploy` then `next build`.
 4. Create staff users in Supabase → Authentication → Users (sign-ups disabled).
+5. Set Supabase Auth URLs for production — see [docs/VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md#4-supabase-auth-urls-required-for-production-login).
+
+**Live app:** https://nursery-os.vercel.app
 
 See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) for details.
 
