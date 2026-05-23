@@ -46,3 +46,4 @@ prisma/*.db-journal
 # agent skills (local only)
 .agents/
 skills-lock.json
+.cursor/debug-*.log
