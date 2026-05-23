@@ -41,8 +41,8 @@ async function fetchAllPlantAvailability(): Promise<PlantAvailability[]> {
 
 export const getAllPlantAvailability = unstable_cache(
   fetchAllPlantAvailability,
-  ["all-plant-availability"],
-  { revalidate: 60, tags: [INVENTORY_CACHE_TAG] }
+  ["all-plant-availability", "v2-sellable-nursery"],
+  { revalidate: 30, tags: [INVENTORY_CACHE_TAG] }
 );
 
 export async function getPlantAvailability(

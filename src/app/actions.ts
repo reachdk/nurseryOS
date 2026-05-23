@@ -5,6 +5,8 @@ import { INVENTORY_CACHE_TAG } from "@/lib/availability";
 
 function revalidateInventory() {
   revalidateTag(INVENTORY_CACHE_TAG);
+  revalidatePath("/");
+  revalidatePath("/plants");
 }
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -73,8 +75,9 @@ export async function createPlantingBatch(formData: FormData) {
     );
   }
 
-  const plantedDate = new Date(plantedDateStr);
-  const expectedReadyDate = new Date(expectedReadyDateStr);
+  const { parseDateOnly } = await import("@/lib/dates");
+  const plantedDate = parseDateOnly(plantedDateStr);
+  const expectedReadyDate = parseDateOnly(expectedReadyDateStr);
 
   if (expectedReadyDate < plantedDate) {
     redirect(

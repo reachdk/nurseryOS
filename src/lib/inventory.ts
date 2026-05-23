@@ -1,5 +1,5 @@
-import { endOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { isReadyForSale } from "@/lib/availability-core";
 import { mergeSellableStock } from "@/lib/sellable-stock";
 
 export async function getOfficeStockByPlant(): Promise<Map<string, number>> {
@@ -18,15 +18,17 @@ export async function getReadyNurseryStockByPlant(
   asOf: Date = new Date()
 ): Promise<Map<string, number>> {
   const batches = await prisma.plantingBatch.findMany({
-    where: {
-      remainingQuantity: { gt: 0 },
-      expectedReadyDate: { lte: endOfDay(asOf) },
+    where: { remainingQuantity: { gt: 0 } },
+    select: {
+      plantTypeId: true,
+      remainingQuantity: true,
+      expectedReadyDate: true,
     },
-    select: { plantTypeId: true, remainingQuantity: true },
   });
 
   const map = new Map<string, number>();
   for (const b of batches) {
+    if (!isReadyForSale(b.expectedReadyDate, asOf)) continue;
     map.set(b.plantTypeId, (map.get(b.plantTypeId) ?? 0) + b.remainingQuantity);
   }
   return map;
@@ -77,14 +79,13 @@ export async function deductSellableStock(
     return { deducted: quantity, shortfall: 0 };
   }
 
-  const readyBatches = await prisma.plantingBatch.findMany({
-    where: {
-      plantTypeId,
-      remainingQuantity: { gt: 0 },
-      expectedReadyDate: { lte: endOfDay(asOf) },
-    },
+  const nurseryCandidates = await prisma.plantingBatch.findMany({
+    where: { plantTypeId, remainingQuantity: { gt: 0 } },
     orderBy: [{ expectedReadyDate: "asc" }, { createdAt: "asc" }],
   });
+  const readyBatches = nurseryCandidates.filter((b) =>
+    isReadyForSale(b.expectedReadyDate, asOf)
+  );
 
   for (const batch of readyBatches) {
     if (remaining <= 0) break;

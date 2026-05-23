@@ -1,5 +1,4 @@
-import { startOfDay } from "date-fns";
-import { formatWeek } from "@/lib/dates";
+import { calendarDayInNursery, formatWeek } from "@/lib/dates";
 
 export type PlantWithStock = {
   id: string;
@@ -41,12 +40,14 @@ export type PlantAvailability = {
   upcomingBatches: NurseryBatchSummary[];
 };
 
-/** Ready date is today or earlier (calendar day). */
+/** Ready date is today or earlier (India calendar day). */
 export function isReadyForSale(
   expectedReadyDate: Date,
   asOf: Date = new Date()
 ): boolean {
-  return startOfDay(expectedReadyDate) <= startOfDay(asOf);
+  return (
+    calendarDayInNursery(expectedReadyDate) <= calendarDayInNursery(asOf)
+  );
 }
 
 export function computeAvailability(
