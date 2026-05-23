@@ -35,15 +35,20 @@ export default async function PlantDetailPage({
       </p>
 
       <Card>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat label="In nursery" value={avail.inNursery} />
           <Stat label="In office" value={avail.inOffice} />
+          <Stat label="Ready in nursery" value={avail.readyInNursery} />
           <Stat
             label="Free to sell"
             value={avail.availableNow}
             highlight={avail.availableNow > 0 ? "good" : "danger"}
           />
         </div>
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          Free to sell includes office stock and nursery batches whose ready date is today or
+          earlier.
+        </p>
       </Card>
 
       {avail.batchRows.length > 0 && (

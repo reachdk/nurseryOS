@@ -28,10 +28,12 @@ Partial move OK: move 20k of 50k batch → 20k office, 30k stays nursery (`moveB
 | Plant batch | +nursery qty |
 | Move to office | nursery down, office up |
 | Batch loss | nursery down, `wastage` up, reason in batch notes |
-| Vyapaar EOD import | office down, `Sale` row created |
-| During day in Vyapaar | NurseryOS office **unchanged** until sync |
+| Vyapaar EOD import | sellable stock down (office first, then ready nursery), `Sale` row created |
+| During day in Vyapaar | NurseryOS **unchanged** until sync |
 
-**Free to sell** = office stock (no “committed” anymore; orders removed).
+**Free to sell** = office stock + nursery batches whose **expected ready date is today or earlier** (still in poly house counts as sellable once ready; no manual move required). **Coming soon** = nursery batches with future ready dates (UI only).
+
+Deduction order on Vyapaar import: office lots FIFO (`movedDate`), then ready nursery batches FIFO (`expectedReadyDate`, `createdAt`).
 
 ## Removed (do not bring back unless asked)
 
@@ -90,7 +92,8 @@ Excel: `read-excel-file` in `actions.ts`; `serverExternalPackages` in `next.conf
 - `src/lib/auth.ts`, `src/lib/audit.ts` — `requireUser()`, `logAudit()`
 - `src/middleware.ts` — session refresh + route guard
 - `src/lib/availability.ts` — nursery/office/batch rows
-- `src/lib/inventory.ts` — `deductOfficeStock` FIFO
+- `src/lib/inventory.ts` — `getSellableStockByPlant`, `deductSellableStock` (office FIFO, then ready nursery)
+- `src/lib/availability-core.ts` — `computeAvailability`, `isReadyForSale` (unit tested)
 - `src/components/SyncImportForm.tsx`, `PlantBatchForm.tsx`, `AddPlantForm.tsx`
 
 ## Run

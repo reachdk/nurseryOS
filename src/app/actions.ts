@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { deductOfficeStock, getOfficeStockByPlant } from "@/lib/inventory";
+import { deductSellableStock, getSellableStockByPlant } from "@/lib/inventory";
 import {
   parseCsvText,
   parseSheetRows,
@@ -311,7 +311,7 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
   );
   const refSet = new Set(existingRefs.map((r) => r.externalRef));
 
-  const officeByPlant = await getOfficeStockByPlant();
+  const sellableByPlant = await getSellableStockByPlant();
 
   const preview: PreviewImportRow[] = [];
 
@@ -334,14 +334,14 @@ export async function previewVyapaarImport(formData: FormData): Promise<{
       continue;
     }
 
-    const office = officeByPlant.get(map.plantTypeId) ?? 0;
-    if (row.quantity > office) {
+    const sellable = sellableByPlant.get(map.plantTypeId) ?? 0;
+    if (row.quantity > sellable) {
       preview.push({
         ...row,
         status: "insufficient",
         plantTypeId: map.plantTypeId,
         plantName: map.plantType.name,
-        message: `Only ${office.toLocaleString()} in office`,
+        message: `Only ${sellable.toLocaleString()} free to sell`,
       });
       continue;
     }
@@ -380,7 +380,7 @@ export async function confirmVyapaarImport(formData: FormData) {
       continue;
     }
 
-    const { shortfall } = await deductOfficeStock(row.plantTypeId!, row.quantity);
+    const { shortfall } = await deductSellableStock(row.plantTypeId!, row.quantity);
     if (shortfall > 0) {
       skipped++;
       continue;

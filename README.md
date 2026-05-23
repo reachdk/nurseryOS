@@ -69,7 +69,9 @@ See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) for details.
 |-------|---------|
 | In nursery | Still in poly house (batches) |
 | In office | Moved to sales area |
-| Free to sell | Same as office (until EOD sync deducts Vyapaar sales) |
+| Free to sell | Office + nursery batches ready today or earlier (EOD sync deducts from this total) |
+| Ready in nursery | Past/today ready date, still in poly house (included in free to sell) |
+| Coming soon | Nursery batches with a future ready date |
 
 ## Nav
 
@@ -79,6 +81,15 @@ See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) for details.
 | Plants | List + add plant |
 | Plant | New batch |
 | Sync | Vyapaar EOD import + mappings link |
+
+## Tests
+
+```bash
+npm test          # run once
+npm run test:watch
+```
+
+Unit tests cover availability (ready vs upcoming nursery), sellable stock merge, and Vyapaar CSV parsing.
 
 ## Auth
 
