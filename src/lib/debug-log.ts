@@ -10,6 +10,7 @@ export function debugLog(payload: {
   data?: Record<string, unknown>;
   runId?: string;
 }): void {
+  if (process.env.NODE_ENV !== "development") return;
   // #region agent log
   fetch(DEBUG_ENDPOINT, {
     method: "POST",

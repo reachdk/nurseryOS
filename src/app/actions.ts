@@ -1,15 +1,10 @@
 "use server";
 
-import {
-  revalidatePath,
-  revalidateTag,
-  unstable_expireTag,
-} from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { INVENTORY_CACHE_TAG } from "@/lib/availability";
 
-/** Purge inventory Data Cache immediately, then refresh stock pages. */
+/** Purge inventory cache after stock mutations (Server Action context only). */
 function revalidateInventory() {
-  unstable_expireTag(INVENTORY_CACHE_TAG);
   revalidateTag(INVENTORY_CACHE_TAG);
   revalidatePath("/", "layout");
   revalidatePath("/plants", "layout");

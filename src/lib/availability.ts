@@ -1,4 +1,4 @@
-import { unstable_cache, unstable_expireTag } from "next/cache";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { debugLog } from "@/lib/debug-log";
 import {
@@ -13,7 +13,7 @@ export const INVENTORY_CACHE_TAG = "inventory";
  * Bump when availability rules change so old Data Cache entries are not reused.
  * Also paired with VERCEL_GIT_COMMIT_SHA in the cache key (fresh cache each deploy).
  */
-export const INVENTORY_CACHE_VERSION = "v4-sellable-nursery";
+export const INVENTORY_CACHE_VERSION = "v5-sellable-nursery";
 
 /** Unique per Vercel deploy; avoids cache key stuck on "production". */
 export function resolveDeployCacheKey(): string {
@@ -107,23 +107,6 @@ export async function fetchAllPlantAvailability(): Promise<PlantAvailability[]> 
 
 const deployCacheKey = resolveDeployCacheKey();
 
-let expiredInventoryTagForDeploy: string | null = null;
-
-function ensureInventoryCacheForDeploy(): void {
-  if (!process.env.VERCEL) return;
-  if (expiredInventoryTagForDeploy === deployCacheKey) return;
-  unstable_expireTag(INVENTORY_CACHE_TAG);
-  expiredInventoryTagForDeploy = deployCacheKey;
-  // #region agent log
-  debugLog({
-    location: "availability.ts:expire-on-deploy",
-    message: "Expired inventory tag for deployment",
-    hypothesisId: "H3",
-    data: { deployCacheKey },
-  });
-  // #endregion
-}
-
 const getCachedAllPlantAvailability = unstable_cache(
   fetchAllPlantAvailability,
   [INVENTORY_CACHE_VERSION, "all-plants", deployCacheKey],
@@ -139,43 +122,24 @@ function looksLikeStaleSellableCache(plant: PlantAvailability): boolean {
   );
 }
 
-function sellableMismatch(
-  cached: PlantAvailability[],
-  fresh: PlantAvailability[]
-): boolean {
-  return fresh.some((f) => {
-    const c = cached.find((x) => x.plantTypeId === f.plantTypeId);
-    if (!c) return true;
-    return (
-      looksLikeStaleSellableCache(c) ||
-      c.availableNow !== f.availableNow ||
-      c.readyInNursery !== f.readyInNursery
-    );
-  });
-}
-
 export async function getAllPlantAvailability(): Promise<PlantAvailability[]> {
-  ensureInventoryCacheForDeploy();
-
   let result = await getCachedAllPlantAvailability();
 
+  // Never call unstable_expireTag here — it throws outside Server Actions.
   if (result.some(looksLikeStaleSellableCache)) {
     const fresh = await fetchAllPlantAvailability();
-    if (sellableMismatch(result, fresh)) {
-      unstable_expireTag(INVENTORY_CACHE_TAG);
-      result = fresh;
-      // #region agent log
-      debugLog({
-        location: "availability.ts:cache-mismatch",
-        message: "Cached sellable totals differ from fresh; using fresh",
-        hypothesisId: "H3",
-        data: {
-          brinjalCached: result.find((p) => /brinjal/i.test(p.plantName)),
-          brinjalFresh: fresh.find((p) => /brinjal/i.test(p.plantName)),
-        },
-      });
-      // #endregion
-    }
+    // #region agent log
+    debugLog({
+      location: "availability.ts:stale-heal",
+      message: "Stale sellable cache; serving fresh fetch",
+      hypothesisId: "H3",
+      data: {
+        brinjalCached: result.find((p) => /brinjal/i.test(p.plantName)),
+        brinjalFresh: fresh.find((p) => /brinjal/i.test(p.plantName)),
+      },
+    });
+    // #endregion
+    result = fresh;
   }
 
   const brinjal = result.find((p) => /brinjal/i.test(p.plantName));
