@@ -14,14 +14,23 @@ export default function HomePage() {
       </p>
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/api/health"
+          href="/dashboard"
           className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
         >
-          Check API health
+          Open app shell
         </Link>
-        <span className="rounded-lg border border-stone-200 px-4 py-2 text-sm text-stone-500">
-          Login coming in REA-35
-        </span>
+        <Link
+          href="/api/health"
+          className="rounded-lg border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+        >
+          API health
+        </Link>
+        <Link
+          href="/login"
+          className="rounded-lg border border-stone-200 px-4 py-2 text-sm text-stone-500"
+        >
+          Sign in (REA-35)
+        </Link>
       </div>
     </main>
   );
