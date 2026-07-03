@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MobileMenu, MobileNav, SidebarNav } from "@/components/layout/Nav";
+import { SignOutButton } from "@/components/layout/SignOutButton";
 import type { AppUser } from "@/server/lib/permissions";
 import { visibleNavItems } from "@/server/lib/permissions";
 
@@ -21,11 +22,14 @@ export function AppShell({ user, children }: AppShellProps) {
             </Link>
             <MobileMenu items={navItems} />
           </div>
-          <div className="text-sm text-stone-600">
+          <div className="flex items-center gap-3 text-sm text-stone-600">
             {user ? (
-              <span>
-                {user.name} · {user.roleName}
-              </span>
+              <>
+                <span>
+                  {user.name} · {user.roleName}
+                </span>
+                <SignOutButton />
+              </>
             ) : (
               <Link href="/login" className="font-medium text-emerald-700 hover:underline">
                 Sign in
